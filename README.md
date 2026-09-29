@@ -25,7 +25,12 @@ The app is a Python server (Dash), so it runs in a [Cloudflare Container](https:
 
 ### Option A: GitHub Actions (this repo already has the workflow)
 
-1. In Cloudflare, go to **My Profile → API Tokens → Create Token**. Use the **Edit Cloudflare Workers** template. Also give it **Account → Containers → Edit**.
+1. In Cloudflare, go to **My Profile → API Tokens → Create Token**. Use the **Edit Cloudflare Workers** template. Check that it has these **Account** permissions:
+   - Workers Scripts: Edit
+   - Containers: Edit (add this row, the template does not have it)
+   - Account Settings: Read
+
+   Under **Account Resources**, pick the account you deploy to. A token for a different account fails with "No access to the specified resource".
 2. Copy your **Account ID** from the Cloudflare dashboard (Workers & Pages → right sidebar).
 3. In GitHub, go to **Settings → Secrets and variables → Actions**. Add:
    - `CLOUDFLARE_API_TOKEN`
