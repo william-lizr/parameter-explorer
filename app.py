@@ -25,6 +25,8 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
+import mpl_export
+
 # ─── APP ──────────────────────────────────────────────────────────────────────
 
 app = dash.Dash(
@@ -738,10 +740,14 @@ def color_meaning(view, metrics, colorby, varying, encoding="both"):
     return colorby or m
 
 
-def panel_card(title, graph, title_id=None, legend=None):
+def panel_card(title, graph, title_id=None, legend=None, view=None):
     extra = {"id": title_id} if title_id else {}
+    head = [html.Div(title, className="panel-title", title=title, **extra)]
+    if view:
+        head.append(html.Button("</> matplotlib", id={"type": "mpl-btn", "index": view},
+                                className="mpl-btn", title="Get matplotlib code for this plot"))
     return html.Div(className="panel-card", children=[
-        html.Div(title, className="panel-title", title=title, **extra),
+        html.Div(head, className="panel-head"),
         legend,
         graph,
     ])
@@ -808,6 +814,9 @@ app.layout = dbc.Container(
         dcc.Store(id="store-constrained", data={}),
         dcc.Store(id="store-rendered-keys", data=None),
         dcc.Store(id="store-selected-row", data=None),
+        dcc.Store(id="store-filename", data={"name": INIT_NAME.split("  (")[0], "sample": False}),
+        dcc.Store(id="store-mpl", data=None),
+        dcc.Download(id="download-nb"),
 
         dbc.Row(style={"height": "100vh", "margin": 0}, children=[
 
@@ -832,6 +841,28 @@ app.layout = dbc.Container(
                 dbc.Modal(id="help-modal", size="lg", scrollable=True, is_open=False, children=[
                     dbc.ModalHeader(dbc.ModalTitle("CSV format guide")),
                     dbc.ModalBody(dcc.Markdown(HELP_MD, className="help-md")),
+                ]),
+                dbc.Modal(id="mpl-modal", size="xl", scrollable=True, is_open=False, children=[
+                    dbc.ModalHeader(dbc.ModalTitle("matplotlib code")),
+                    dbc.ModalBody([
+                        html.Div(id="mpl-note", className="mpl-note"),
+                        html.Div(className="mpl-chunk-head", children=[
+                            html.Span("1 · Load the CSV"),
+                            dcc.Clipboard(id="mpl-copy-load", className="mpl-copy", title="Copy"),
+                        ]),
+                        html.Pre(id="mpl-load", className="mpl-code"),
+                        html.Div(className="mpl-chunk-head", children=[
+                            html.Span("2 · Make the figure"),
+                            dcc.Clipboard(id="mpl-copy-fig", className="mpl-copy", title="Copy"),
+                        ]),
+                        html.Pre(id="mpl-fig", className="mpl-code"),
+                    ]),
+                    dbc.ModalFooter([
+                        html.Span(["Copy both as one cell ",
+                                   dcc.Clipboard(id="mpl-copy-all", className="mpl-copy", title="Copy both")],
+                                  className="mpl-copy-all"),
+                        dbc.Button("Download .ipynb", id="mpl-download", color="info", size="sm"),
+                    ]),
                 ]),
                 dcc.Dropdown(id="sample-select", options=list_samples(), placeholder="…or pick a sample",
                              clearable=False, style={"fontSize": "12px", "marginBottom": "6px"}),
@@ -911,6 +942,7 @@ def open_help(_):
     Output("store-selected-row", "data"),
     Output("filename-display", "children"),
     Output("col-types-accordion", "active_item"),
+    Output("store-filename", "data"),
     Input("upload-csv", "contents"),
     Input("sample-select", "value"),
     State("upload-csv", "filename"),
@@ -921,21 +953,23 @@ def parse_csv(contents, sample, filename, old_key):
     try:
         if ctx.triggered_id == "sample-select":
             if sample not in list_samples():  # only files from the samples folder
-                return (no_update,) * 6
+                return (no_update,) * 7
             filename = sample
             df = pd.read_csv(SAMPLES_DIR / sample)
         elif contents:
             _, content_string = contents.split(",", 1)
             df = pd.read_csv(io.StringIO(base64.b64decode(content_string).decode("utf-8-sig")))
         else:
-            return (no_update,) * 6
+            return (no_update,) * 7
     except Exception as e:  # show the error; keep the old data
-        return no_update, no_update, no_update, no_update, f"Could not read {filename}: {e}", no_update
+        return (no_update, no_update, no_update, no_update, f"Could not read {filename}: {e}",
+                no_update, no_update)
     DATASETS.pop(old_key, None)
     key = register_df(df)
     # Open the column-type panel so the user checks the guesses first.
     return (key, detect_col_types(df), {}, None,
-            f"{filename}  ({len(df):,} rows × {len(df.columns)} cols)", "col-types-item")
+            f"{filename}  ({len(df):,} rows × {len(df.columns)} cols)", "col-types-item",
+            {"name": filename, "sample": ctx.triggered_id == "sample-select"})
 
 
 @app.callback(
@@ -1203,7 +1237,8 @@ def render_panels(key, col_types, constrained, metrics, views, colorby, encoding
             graph = dcc.Graph(id={"type": "panel", "index": view}, figure=style_fig(fig, uirev),
                               style={"height": "100%"},
                               config={"displaylogo": False, "scrollZoom": True})
-        cards.append(panel_card(title, graph, "inspector-title" if view == "inspector" else None, legend))
+        cards.append(panel_card(title, graph, "inspector-title" if view == "inspector" else None, legend,
+                                view=view if metrics or view == "inspector" else None))
 
     return cards, grid_template(len(cards)), count
 
@@ -1276,6 +1311,120 @@ def update_inspector(row, key, col_types, metrics):
     param_cols = [c for c, t in col_types.items() if t == "parameter"]
     fig, title = fig_inspector(df, row, col_types, param_cols, metrics or [])
     return style_fig(fig), title
+
+
+# ─── CALLBACKS: matplotlib export ─────────────────────────────────────────────
+
+def figure_code(view, filtered, df_full, metrics, colorby, varying, encoding, title,
+                col_types, selected_row):
+    """matplotlib code lines for one panel, and None; or None and the reason. Mirrors build_panel."""
+    if view == "inspector":
+        result_cols = [c for c, t in col_types.items() if t == "result" and c in df_full.columns][:4]
+        if not result_cols:
+            return None, "No result columns. Mark a column as 'result' under Column types."
+        if selected_row is None or selected_row not in df_full.index:
+            return None, "Click a point in a plot first. The code draws the results of that run."
+        return mpl_export.code_inspector(int(selected_row), result_cols, title), None
+    if len(filtered) == 0:
+        return None, "No rows match the current constraints."
+    if not metrics:
+        return None, "Select a metric first."
+    m = metrics[0]
+    view = resolve_auto(view, varying)
+    reason = blocked_reason("auto" if view == "blocked" else view, varying)
+    if reason:
+        return None, reason
+    dims = list(varying)
+    if view == "points":
+        return mpl_export.code_points(filtered, dims, m, colorby, encoding, title), None
+    if view == "split":
+        split = split_param(varying)
+        x, y = [p for p in varying if p != split][:2]
+        return mpl_export.code_split(filtered, split, x, y, m, title), None
+    if view == "hist":
+        return mpl_export.code_hist(filtered, m, title), None
+    if view == "2d":
+        return mpl_export.code_slices(filtered, dims, m, colorby, title), None
+    if view == "3d":
+        return mpl_export.code_3d(filtered, dims, m, colorby, title), None
+    if view == "heatmap":
+        return mpl_export.code_heatmap(filtered, dims, m, colorby, title), None
+    if view == "sensitivity":
+        if not dims:
+            return None, "No varying parameters. Release a constraint."
+        return mpl_export.code_sensitivity(dims, metrics, title), None
+    if view == "pairs":
+        if len(metrics) < 2:
+            return None, "Select 2 or more metrics."
+        return mpl_export.code_pairs(filtered, metrics, colorby, title), None
+    return None, "This view has no matplotlib export."
+
+
+@app.callback(
+    Output("mpl-modal", "is_open"),
+    Output("mpl-note", "children"),
+    Output("mpl-load", "children"),
+    Output("mpl-fig", "children"),
+    Output("mpl-copy-load", "content"),
+    Output("mpl-copy-fig", "content"),
+    Output("mpl-copy-all", "content"),
+    Output("store-mpl", "data"),
+    Input({"type": "mpl-btn", "index": ALL}, "n_clicks"),
+    State("store-data", "data"),
+    State("store-col-types", "data"),
+    State("store-constrained", "data"),
+    State("metric-select", "value"),
+    State("colorby-select", "value"),
+    State("point-encoding", "value"),
+    State("store-selected-row", "data"),
+    State("store-filename", "data"),
+    prevent_initial_call=True,
+)
+def export_matplotlib(_clicks, key, col_types, constrained, metrics, colorby, encoding, selected_row, fileinfo):
+    # New panels fire this with n_clicks=None. Only react to a real click.
+    if not ctx.triggered or not ctx.triggered[0]["value"] or not isinstance(ctx.triggered_id, dict):
+        return (no_update,) * 8
+    df = get_df(key)
+    if df is None or not col_types:
+        return True, "The data is gone from the server. Load the CSV again.", "", "", "", "", "", None
+
+    view = ctx.triggered_id["index"]
+    constrained = constrained or {}
+    filtered = apply_constraints(df, constrained)
+    param_cols = [c for c, t in col_types.items() if t == "parameter"]
+    free_params = [c for c in param_cols if c not in constrained]
+    metrics = [m for m in (metrics or []) if m in df.columns]
+    varying = varying_params(filtered, param_cols, free_params)
+
+    if view == "inspector":
+        _, title = fig_inspector(df, selected_row, col_types, param_cols, metrics)
+    else:
+        _, title = build_panel(view, filtered, metrics, colorby, varying, encoding)
+    lines, reason = figure_code(view, filtered, df, metrics, colorby, varying, encoding, title,
+                                col_types, selected_row)
+    if lines is None:
+        return True, reason, "", "", "", "", "", None
+
+    fileinfo = fileinfo or {}
+    load = mpl_export.load_code(fileinfo.get("name") or "data.csv", fileinfo.get("sample"), constrained)
+    fig = "\n".join(lines)
+    both = load + "\n\n\n" + fig
+    note = ("Paste chunk 1 into a notebook cell and run it. Paste chunk 2 into the next cell. "
+            "Or download both as a notebook.")
+    return True, note, load, fig, load, fig, both, {"load": load, "fig": fig, "title": title}
+
+
+@app.callback(
+    Output("download-nb", "data"),
+    Input("mpl-download", "n_clicks"),
+    State("store-mpl", "data"),
+    prevent_initial_call=True,
+)
+def download_notebook(_, code):
+    if not code:
+        return no_update
+    nb = mpl_export.notebook(code["load"], code["fig"], code["title"])
+    return dict(content=nb, filename="parameter_explorer_figure.ipynb")
 
 
 # ─── ENTRY ────────────────────────────────────────────────────────────────────

@@ -4,6 +4,17 @@ A no-code explorer for parameter sweeps. Load a CSV with one row per simulation 
 
 **How to format your CSV:** see [docs/CSV-format.md](docs/CSV-format.md) or the [wiki](https://github.com/william-lizr/parameter-explorer/wiki/CSV-format). The same guide opens from the app ("How to format your CSV").
 
+## Get matplotlib code for a plot
+
+Each plot has a **</> matplotlib** button in its title bar. It opens a pop-up with two chunks of Python:
+
+1. **Load the CSV.** Reads the file and applies the constraints you set in the app. For a sample file, it reads the file straight from GitHub.
+2. **Make the figure.** Draws the same plot with matplotlib, from the `df` of chunk 1.
+
+Each chunk has a copy button. Paste them into two notebook cells and run them. You can also copy both as one cell, or download a ready `.ipynb`. For your own CSV, change `CSV_PATH` to the path of your file.
+
+The code needs `pandas`, `numpy` and `matplotlib`.
+
 ## Run it on your computer
 
 ```bash

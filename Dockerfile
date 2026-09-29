@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY app.py ./
+COPY app.py mpl_export.py ./
 COPY assets ./assets
 COPY docs ./docs
 COPY samples ./samples

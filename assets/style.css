@@ -203,3 +203,53 @@ body.dragging * {
 .help-md th, .help-md td { border: 1px solid #3a4255; padding: 3px 8px; }
 .help-md pre { background: #1b1f29; padding: 8px; border-radius: 4px; font-size: 12px; }
 .help-md code { color: #7fd3e0; }
+
+/* Panel title row with the matplotlib export button */
+.panel-head {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #1c1f27;
+}
+.panel-head .panel-title {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+}
+.mpl-btn {
+  flex-shrink: 0;
+  margin-right: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-family: monospace;
+  color: #9aa3b2;
+  background: transparent;
+  border: 1px solid #3a4255;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mpl-btn:hover {
+  color: #17a2b8;
+  border-color: #17a2b8;
+}
+
+/* matplotlib code pop-up */
+.mpl-note { font-size: 12px; color: #9aa3b2; margin-bottom: 8px; }
+.mpl-chunk-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.mpl-code {
+  background: #1b1f29;
+  color: #d7d7e0;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  max-height: 45vh;
+  overflow: auto;
+}
+.mpl-copy { display: inline-block; cursor: pointer; color: #17a2b8; font-size: 15px; }
+.mpl-copy-all { margin-right: auto; font-size: 13px; }
