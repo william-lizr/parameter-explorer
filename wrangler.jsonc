@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "parameter-explorer",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "containers": [
+    {
+      "class_name": "DashApp",
+      "image": "./Dockerfile",
+      // basic = 1/4 vCPU, 1 GiB RAM. Use "standard-1" for bigger CSVs.
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "class_name": "DashApp", "name": "DASH_APP" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DashApp"] }]
+}

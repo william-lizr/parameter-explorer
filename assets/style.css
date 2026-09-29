@@ -1,0 +1,205 @@
+.drop-zone {
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  padding: 4px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.drop-zone.drag-over {
+  border-color: #17a2b8;
+  background-color: rgba(23, 162, 184, 0.08);
+}
+
+.param-chip {
+  cursor: grab;
+}
+
+.param-chip:active {
+  cursor: grabbing;
+}
+
+.panel-grid {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.panel-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background-color: #111318;
+  border: 1px solid #222;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #9aa3b2;
+  padding: 5px 10px;
+  border-bottom: 1px solid #1c1f27;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-card .dash-graph {
+  flex: 1;
+  min-height: 0;
+}
+
+.picker-box {
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid #222;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.picker-box label {
+  display: block;
+  margin: 1px 0;
+  cursor: pointer;
+}
+
+.picker-box input {
+  margin-right: 6px;
+}
+
+/* Legend strip under each panel title. */
+.panel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-bottom: 1px solid #1c1f27;
+  color: #c8c8d0;
+}
+
+.legend-key {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #8a93a6;
+  margin-right: 5px;
+}
+
+/* Checklists: Dash's default text color is black, which is unreadable here. */
+.picker-box,
+.picker-box label,
+.picker-box span {
+  color: #e2e4ea !important;
+}
+
+.picker-box input {
+  accent-color: #17a2b8;
+}
+
+/* Dark palette for Dash 4 components (dropdowns, checklists, sliders).
+   Dash's defaults are dark text on white, which clashes with the dark theme. */
+:root {
+  --Dash-Fill-Inverse-Strong: #1a1e27;
+  --Dash-Fill-Interactive-Strong: #17a2b8;
+  --Dash-Fill-Interactive-Weak: rgba(23, 162, 184, 0.12);
+  --Dash-Fill-Primary-Hover: rgba(255, 255, 255, 0.06);
+  --Dash-Fill-Primary-Active: rgba(255, 255, 255, 0.1);
+  --Dash-Fill-Disabled: rgba(255, 255, 255, 0.06);
+  --Dash-Stroke-Strong: #4a5266;
+  --Dash-Stroke-Weak: #2c3140;
+  --Dash-Text-Strong: #f0f1f4;
+  --Dash-Text-Primary: #e2e4ea;
+  --Dash-Text-Weak: #b4b9c4;
+  --Dash-Text-Disabled: #8a8f9c;
+  --Dash-Shading-Strong: rgba(0, 0, 0, 0.6);
+  --Dash-Shading-Weak: rgba(0, 0, 0, 0.4);
+}
+
+.dash-dropdown,
+.dash-dropdown-value,
+.dash-dropdown-value-item,
+.dash-options-list-option-text {
+  color: var(--Dash-Text-Primary);
+}
+
+.dash-dropdown {
+  background-color: var(--Dash-Fill-Inverse-Strong);
+}
+
+/* Checklist rows: checkbox and label on one line. */
+.picker-box .dash-options-list-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 1px 0;
+  padding: 1px 0;
+}
+
+.picker-box .dash-options-list-option-wrapper {
+  display: inline-flex;
+}
+
+/* Accordion header: Bootstrap's light-blue open state is too loud here. */
+.accordion-button,
+.accordion-button:not(.collapsed) {
+  background-color: #1a1e27;
+  color: #e2e4ea;
+  box-shadow: none;
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.accordion-button::after {
+  filter: invert(1);
+}
+
+.accordion-body {
+  background-color: #0d0f14;
+}
+
+/* Inline radio group (point-map encoding). */
+.picker-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+}
+
+.picker-inline .dash-options-list-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--Dash-Text-Primary);
+}
+
+/* Left panel: sections keep their full height. The panel scrolls instead of
+   squeezing sections on top of each other. */
+.left-panel > * {
+  flex-shrink: 0;
+}
+
+/* Pointer-based drag (see dragdrop.js). */
+.param-chip {
+  touch-action: none;
+  user-select: none;
+}
+
+.param-chip.drag-source {
+  opacity: 0.35;
+}
+
+body.dragging,
+body.dragging * {
+  cursor: grabbing !important;
+}
+
+/* CSV format guide pop-up */
+.help-md table { font-size: 12px; margin-bottom: 1em; }
+.help-md th, .help-md td { border: 1px solid #3a4255; padding: 3px 8px; }
+.help-md pre { background: #1b1f29; padding: 8px; border-radius: 4px; font-size: 12px; }
+.help-md code { color: #7fd3e0; }
